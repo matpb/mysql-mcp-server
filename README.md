@@ -11,7 +11,33 @@ A read-only Model Context Protocol (MCP) server for MySQL databases. This server
   - `describe_table`: Get detailed schema information for a specific table
   - `execute_query`: Execute any read-only SQL query
 
-## Installation
+## Usage with Claude Code
+
+Add to your project by creating a `.mcp.json` file in your project root:
+
+```json
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "npx",
+      "args": ["-y", "@matpb/mysql-mcp-server"],
+      "env": {
+        "MYSQL_HOST": "localhost",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "your_username",
+        "MYSQL_PASSWORD": "your_password",
+        "MYSQL_DATABASE": "your_database"
+      }
+    }
+  }
+}
+```
+
+Claude Code will automatically detect and use this MCP server when you open your project.
+
+## Installation (for local development)
+
+**Note:** For normal usage with Claude Code, we recommend using `npx` as shown above. Local installation is only needed if you're developing or modifying the server.
 
 ```bash
 npm install
@@ -46,36 +72,6 @@ MAX_ROWS=1000
 ```bash
 npm run build
 ```
-
-## Usage with Claude Desktop
-
-Add to your Claude Desktop configuration:
-
-### macOS
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "mysql": {
-      "command": "npx",
-      "args": ["@matpb/mysql-mcp-server"],
-      "env": {
-        "MYSQL_HOST": "localhost",
-        "MYSQL_PORT": "3306",
-        "MYSQL_USER": "your_username",
-        "MYSQL_PASSWORD": "your_password",
-        "MYSQL_DATABASE": "your_database"
-      }
-    }
-  }
-}
-```
-
-### Windows
-
-Edit `%APPDATA%\Claude\claude_desktop_config.json` with the same configuration.
 
 ## Security Features
 
