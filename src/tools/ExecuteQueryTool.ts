@@ -65,12 +65,9 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
         const rowCount = results.length;
         const truncated = rowCount === limit;
 
-        // For token optimization, limit field sizes
-        const optimizedResults = this.optimizeResults(results, 100); // Limit string fields to 100 chars
-
         return {
           success: true,
-          data: optimizedResults,
+          data: results,
           rowCount,
           truncated,
           executionTime: `${executionTime}ms`,
@@ -96,23 +93,6 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
     }
   }
 
-  private optimizeResults(results: any[], maxFieldLength: number): any[] {
-    return results.map(row => {
-      const optimizedRow: any = {};
-      for (const [key, value] of Object.entries(row)) {
-        if (typeof value === 'string' && value.length > maxFieldLength) {
-          optimizedRow[key] = value.substring(0, maxFieldLength) + '...';
-        } else if (value instanceof Buffer) {
-          optimizedRow[key] = `[Buffer: ${value.length} bytes]`;
-        } else if (value instanceof Date) {
-          optimizedRow[key] = value.toISOString();
-        } else {
-          optimizedRow[key] = value;
-        }
-      }
-      return optimizedRow;
-    });
-  }
 }
 
 export default ExecuteQueryTool;
