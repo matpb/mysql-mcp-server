@@ -10,7 +10,6 @@ A read-only Model Context Protocol (MCP) server for MySQL databases. This server
   - `show_tables`: List all tables in the database
   - `describe_table`: Get detailed schema information for a specific table
   - `execute_query`: Execute any read-only SQL query
-  - `get_database_schema`: Get complete database schema in an optimized format
 
 ## Installation
 
@@ -57,8 +56,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "mysql": {
-      "command": "node",
-      "args": ["/absolute/path/to/mysql-mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["@matpb/mysql-mcp-server"],
       "env": {
         "MYSQL_HOST": "localhost",
         "MYSQL_PORT": "3306",
@@ -101,9 +100,6 @@ Get detailed schema information including columns, indexes, and metadata for a s
 
 ### Execute Query
 Execute any read-only SQL query with automatic sanitization and result limiting.
-
-### Get Database Schema
-Retrieve the complete database schema in a token-optimized format with optional index and view information.
 
 ## Development
 
