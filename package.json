@@ -1,0 +1,52 @@
+{
+  "name": "@matpb/mysql-mcp-server",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol (MCP) server for MySQL database operations with secure read-only queries, schema inspection, and table management",
+  "type": "module",
+  "bin": {
+    "mysql-mcp-server": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && mcp-build",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "mcp-framework": "^0.2.2",
+    "mysql2": "^3.14.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mysql",
+    "database",
+    "sql",
+    "server",
+    "anthropic",
+    "claude"
+  ],
+  "author": "Mat",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matpb/mysql-mcp-server.git"
+  },
+  "homepage": "https://github.com/matpb/mysql-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/matpb/mysql-mcp-server/issues"
+  }
+}
