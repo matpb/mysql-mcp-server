@@ -5,6 +5,7 @@ A read-only Model Context Protocol (MCP) server for MySQL databases. This server
 ## Features
 
 - **Read-Only Access**: All queries are sanitized to ensure only read operations are allowed
+- **Google Cloud SQL Proxy**: Built-in support for connecting to Cloud SQL instances without IP whitelisting
 - **Token Optimization**: Results are automatically limited and optimized to minimize token usage
 - **Comprehensive Tools**:
   - `show_tables`: List all tables in the database
@@ -72,6 +73,63 @@ MAX_ROWS=1000
 ```bash
 npm run build
 ```
+
+## Google Cloud SQL Proxy
+
+This server includes built-in support for Google Cloud SQL Proxy, allowing secure connections to Cloud SQL instances without IP whitelisting.
+
+### Cloud SQL Configuration
+
+Add the following to your `.mcp.json` for Cloud SQL:
+
+```json
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "npx",
+      "args": ["-y", "@matpb/mysql-mcp-server"],
+      "env": {
+        "CLOUD_SQL_PROXY_ENABLED": "true",
+        "CLOUD_SQL_INSTANCE": "project:region:instance",
+        "MYSQL_USER": "your_username",
+        "MYSQL_PASSWORD": "your_password",
+        "MYSQL_DATABASE": "your_database"
+      }
+    }
+  }
+}
+```
+
+### Cloud SQL Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `CLOUD_SQL_PROXY_ENABLED` | No | `false` | Enable Cloud SQL Proxy |
+| `CLOUD_SQL_INSTANCE` | Yes* | - | Instance connection name (`project:region:instance`) |
+| `CLOUD_SQL_PROXY_PORT` | No | `3307` | Local TCP port for proxy |
+| `GOOGLE_APPLICATION_CREDENTIALS` | No | - | Path to service account JSON (falls back to gcloud auth) |
+| `CLOUD_SQL_PROXY_BINARY` | No | auto | Custom path to proxy binary |
+| `CLOUD_SQL_PROXY_AUTO_DOWNLOAD` | No | `true` | Auto-download binary if missing |
+| `CLOUD_SQL_PROXY_STARTUP_TIMEOUT` | No | `30000` | Startup timeout in milliseconds |
+
+*Required when `CLOUD_SQL_PROXY_ENABLED=true`
+
+### Authentication
+
+The Cloud SQL Proxy supports two authentication methods:
+
+1. **Service Account JSON** (recommended for production): Set `GOOGLE_APPLICATION_CREDENTIALS` to the path of your service account key file.
+
+2. **Application Default Credentials** (convenient for development): If no credentials file is specified, the proxy uses your `gcloud auth application-default` credentials.
+
+### How It Works
+
+When Cloud SQL Proxy is enabled:
+
+1. The proxy binary is automatically downloaded (Mac, Windows, Linux supported)
+2. A local proxy process is started on the configured port
+3. MySQL connections are routed through the secure proxy tunnel
+4. The proxy is automatically stopped when the server shuts down
 
 ## Security Features
 

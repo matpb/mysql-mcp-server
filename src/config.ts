@@ -12,6 +12,15 @@ export const config = {
     connectionLimit: parseInt(process.env.MYSQL_CONNECTION_LIMIT || '10', 10),
     connectTimeout: parseInt(process.env.MYSQL_CONNECT_TIMEOUT || '60000', 10),
   },
+  cloudSqlProxy: {
+    enabled: process.env.CLOUD_SQL_PROXY_ENABLED === 'true',
+    instanceConnectionName: process.env.CLOUD_SQL_INSTANCE || '',
+    port: parseInt(process.env.CLOUD_SQL_PROXY_PORT || '3307', 10),
+    credentialsFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
+    binaryPath: process.env.CLOUD_SQL_PROXY_BINARY || '',
+    autoDownload: process.env.CLOUD_SQL_PROXY_AUTO_DOWNLOAD !== 'false',
+    startupTimeout: parseInt(process.env.CLOUD_SQL_PROXY_STARTUP_TIMEOUT || '30000', 10),
+  },
   query: {
     timeout: parseInt(process.env.QUERY_TIMEOUT || '30000', 10),
     maxRows: parseInt(process.env.MAX_ROWS || '1000', 10),
