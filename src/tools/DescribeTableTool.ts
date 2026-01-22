@@ -98,8 +98,8 @@ class DescribeTableTool extends MCPTool<DescribeTableInput> {
       return {
         content: [
           {
-            type: 'error' as const,
-            text: `Failed to describe table '${input.table}': ${error}`
+            type: 'text' as const,
+            text: `Error: Failed to describe table '${input.table}': ${error}`
           }
         ]
       };

@@ -6,7 +6,6 @@ import { config } from "../config.js";
 
 interface ExecuteQueryInput {
   query: string;
-  limit?: number;
 }
 
 class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
@@ -17,10 +16,6 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
     query: {
       type: z.string(),
       description: "SQL query to execute (read-only operations only)",
-    },
-    limit: {
-      type: z.number().optional(),
-      description: `Maximum number of rows to return (default: ${config.query.maxRows})`,
     },
   };
 
@@ -38,7 +33,7 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
       }
 
       // Apply row limit if not already present
-      const limit = input.limit || config.query.maxRows;
+      const limit = config.query.maxRows;
       let finalQuery = sanitizationResult.sanitizedQuery;
       
       // Check if query already has LIMIT clause
