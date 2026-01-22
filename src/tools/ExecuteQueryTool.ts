@@ -25,11 +25,16 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
       const sanitizationResult = QuerySanitizer.sanitize(input.query);
       
       if (!sanitizationResult.isValid) {
-        return {
-          success: false,
-          error: sanitizationResult.error,
-          message: "Query rejected: This appears to be a mutation operation. Only read-only queries are allowed.",
-        };
+        return [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: sanitizationResult.error,
+              message: "Query rejected: This appears to be a mutation operation. Only read-only queries are allowed.",
+            }, null, 2)
+          }
+        ];
       }
 
       // Apply row limit if not already present
@@ -60,31 +65,46 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
         const rowCount = results.length;
         const truncated = rowCount === limit;
 
-        return {
-          success: true,
-          data: results,
-          rowCount,
-          truncated,
-          executionTime: `${executionTime}ms`,
-          message: truncated 
-            ? `Query executed successfully. Showing first ${limit} rows.`
-            : `Query executed successfully. ${rowCount} row(s) returned.`,
-        };
+        return [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              data: results,
+              rowCount,
+              truncated,
+              executionTime: `${executionTime}ms`,
+              message: truncated
+                ? `Query executed successfully. Showing first ${limit} rows.`
+                : `Query executed successfully. ${rowCount} row(s) returned.`,
+            }, null, 2)
+          }
+        ];
       } else {
         // Non-SELECT query results (SHOW, DESCRIBE, etc.)
-        return {
-          success: true,
-          data: results,
-          executionTime: `${executionTime}ms`,
-          message: "Query executed successfully.",
-        };
+        return [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              data: results,
+              executionTime: `${executionTime}ms`,
+              message: "Query executed successfully.",
+            }, null, 2)
+          }
+        ];
       }
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        message: "Query execution failed.",
-      };
+      return [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+            message: "Query execution failed.",
+          }, null, 2)
+        }
+      ];
     }
   }
 

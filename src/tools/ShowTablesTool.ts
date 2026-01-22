@@ -33,14 +33,12 @@ class ShowTablesTool extends MCPTool<ShowTablesInput> {
         message: `Found ${tables.length} table(s)`,
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error: Failed to list tables: ${error}`
-          }
-        ]
-      };
+      return [
+        {
+          type: 'text' as const,
+          text: `Error: Failed to list tables: ${error}`
+        }
+      ];
     }
   }
 }

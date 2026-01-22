@@ -86,23 +86,19 @@ class DescribeTableTool extends MCPTool<DescribeTableInput> {
         summary: `Table '${tableName}' has ${formattedColumns.length} columns and ${formattedIndexes.length} indexes`,
       };
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(response, null, 2)
-          }
-        ]
-      };
+      return [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(response, null, 2)
+        }
+      ];
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error: Failed to describe table '${input.table}': ${error}`
-          }
-        ]
-      };
+      return [
+        {
+          type: 'text' as const,
+          text: `Error: Failed to describe table '${input.table}': ${error}`
+        }
+      ];
     }
   }
 }
