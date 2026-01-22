@@ -14,6 +14,7 @@ export interface CloudSQLProxyConfig {
 export class CloudSQLProxy {
   private process: ChildProcess | null = null;
   private isRunning: boolean = false;
+  private lastError: string = '';
   private config: Required<Omit<CloudSQLProxyConfig, 'credentialsFile' | 'binaryPath'>> &
     Pick<CloudSQLProxyConfig, 'credentialsFile' | 'binaryPath'>;
 
@@ -127,11 +128,24 @@ export class CloudSQLProxy {
       detached: false,
     });
 
+    // Track if process exited early
+    let processExited = false;
+    let exitCode: number | null = null;
+
     // Capture stdout
     this.process.stdout?.on('data', (data: Buffer) => {
       const message = data.toString().trim();
       if (message) {
         console.error(`[CloudSQLProxy:stdout] ${message}`);
+        // Parse structured logs for errors
+        try {
+          const log = JSON.parse(message);
+          if (log.level === 'error' || log.level === 'fatal') {
+            this.lastError = log.message || log.msg || message;
+          }
+        } catch {
+          // Not JSON, just log it
+        }
       }
     });
 
@@ -140,17 +154,23 @@ export class CloudSQLProxy {
       const message = data.toString().trim();
       if (message) {
         console.error(`[CloudSQLProxy:stderr] ${message}`);
+        // Capture error messages for later reporting
+        this.lastError = message;
       }
     });
 
     // Handle process errors
     this.process.on('error', (err) => {
       console.error(`[CloudSQLProxy] Process error: ${err.message}`);
+      this.lastError = err.message;
       this.isRunning = false;
+      processExited = true;
     });
 
     // Handle process exit
     this.process.on('exit', (code, signal) => {
+      processExited = true;
+      exitCode = code;
       if (code !== null) {
         console.error(`[CloudSQLProxy] Process exited with code ${code}`);
       } else if (signal !== null) {
@@ -160,20 +180,38 @@ export class CloudSQLProxy {
       this.process = null;
     });
 
-    // Wait for proxy to be ready
+    // Wait for proxy to be ready, but also check if process exits early
     console.error(`[CloudSQLProxy] Waiting for proxy to be ready (timeout: ${this.config.startupTimeout}ms)...`);
-    const ready = await this.waitForReady();
+    const startTime = Date.now();
+    const checkInterval = 500;
 
-    if (!ready) {
-      await this.stop();
-      throw new Error(
-        `Cloud SQL Proxy failed to start within ${this.config.startupTimeout}ms. ` +
-        'Check credentials and instance connection name.'
-      );
+    while (Date.now() - startTime < this.config.startupTimeout) {
+      // Check if process exited early (indicates an error)
+      if (processExited) {
+        const errorDetails = this.lastError || 'Unknown error';
+        throw new Error(
+          `Cloud SQL Proxy exited unexpectedly (code: ${exitCode}). ` +
+          `Error: ${errorDetails}`
+        );
+      }
+
+      // Check if proxy is accepting connections
+      if (await this.checkConnection()) {
+        this.isRunning = true;
+        console.error(`[CloudSQLProxy] Proxy ready on 127.0.0.1:${this.config.port}`);
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
     }
 
-    this.isRunning = true;
-    console.error(`[CloudSQLProxy] Proxy ready on 127.0.0.1:${this.config.port}`);
+    // Timeout reached
+    await this.stop();
+    const errorDetails = this.lastError ? ` Last error: ${this.lastError}` : '';
+    throw new Error(
+      `Cloud SQL Proxy failed to start within ${this.config.startupTimeout}ms.${errorDetails} ` +
+      'Check credentials and instance connection name.'
+    );
   }
 
   /**

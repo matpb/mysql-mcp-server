@@ -92,18 +92,26 @@ export class BinaryManager {
    * Download a file from URL, following redirects
    */
   private static async downloadFile(url: string, destPath: string): Promise<void> {
+    const tempPath = `${destPath}.downloading`;
+
     return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        fs.unlink(tempPath).catch(() => {});
+      };
+
       const makeRequest = (requestUrl: string, redirectCount: number = 0) => {
         if (redirectCount > 5) {
-          reject(new Error('Too many redirects'));
+          cleanup();
+          reject(new Error('Too many redirects while downloading Cloud SQL Proxy'));
           return;
         }
 
-        https.get(requestUrl, (response) => {
+        const request = https.get(requestUrl, { timeout: 30000 }, (response) => {
           // Handle redirects
           if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307) {
             const redirectUrl = response.headers.location;
             if (!redirectUrl) {
+              cleanup();
               reject(new Error('Redirect without location header'));
               return;
             }
@@ -112,24 +120,67 @@ export class BinaryManager {
           }
 
           if (response.statusCode !== 200) {
-            reject(new Error(`Download failed with status ${response.statusCode}`));
+            cleanup();
+            reject(new Error(
+              `Failed to download Cloud SQL Proxy: HTTP ${response.statusCode}. ` +
+              `URL: ${requestUrl}`
+            ));
             return;
           }
 
-          const file = createWriteStream(destPath);
+          const file = createWriteStream(tempPath);
+          let downloadedBytes = 0;
+          const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
+
+          response.on('data', (chunk: Buffer) => {
+            downloadedBytes += chunk.length;
+            if (totalBytes > 0 && downloadedBytes % (5 * 1024 * 1024) < chunk.length) {
+              const percent = Math.round((downloadedBytes / totalBytes) * 100);
+              console.error(`[CloudSQLProxy] Download progress: ${percent}% (${Math.round(downloadedBytes / 1024 / 1024)}MB)`);
+            }
+          });
+
           response.pipe(file);
 
-          file.on('finish', () => {
+          file.on('finish', async () => {
             file.close();
-            resolve();
+            try {
+              // Rename temp file to final destination
+              await fs.rename(tempPath, destPath);
+              resolve();
+            } catch (err) {
+              cleanup();
+              reject(new Error(`Failed to save Cloud SQL Proxy binary: ${err}`));
+            }
           });
 
           file.on('error', (err) => {
-            fs.unlink(destPath).catch(() => {});
-            reject(err);
+            cleanup();
+            reject(new Error(`Failed to write Cloud SQL Proxy binary: ${err.message}`));
           });
-        }).on('error', (err) => {
-          reject(err);
+
+          response.on('error', (err) => {
+            file.destroy();
+            cleanup();
+            reject(new Error(`Download interrupted: ${err.message}`));
+          });
+        });
+
+        request.on('error', (err) => {
+          cleanup();
+          reject(new Error(
+            `Failed to download Cloud SQL Proxy: ${err.message}. ` +
+            `Check your network connection.`
+          ));
+        });
+
+        request.on('timeout', () => {
+          request.destroy();
+          cleanup();
+          reject(new Error(
+            'Download timed out after 30 seconds. ' +
+            'Check your network connection or try again later.'
+          ));
         });
       };
 
@@ -178,10 +229,13 @@ export class BinaryManager {
     if (!autoDownload) {
       throw new Error(
         `Cloud SQL Proxy binary not found at ${finalPath}. ` +
-        `Set CLOUD_SQL_PROXY_AUTO_DOWNLOAD=true to enable automatic download, ` +
+        `Either set CLOUD_SQL_PROXY_AUTO_DOWNLOAD=true to enable automatic download, ` +
+        `set CLOUD_SQL_PROXY_BINARY to point to an existing binary, ` +
         `or manually download from ${this.getDownloadUrl(version)}`
       );
     }
+
+    console.error(`[CloudSQLProxy] Binary not found at ${finalPath}, downloading...`);
 
     await this.downloadBinary(finalPath, version);
     return finalPath;

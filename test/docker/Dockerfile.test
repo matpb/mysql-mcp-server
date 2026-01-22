@@ -1,0 +1,14 @@
+# Minimal test image for Cloud SQL Proxy download testing
+FROM node:20-slim
+
+# Install ca-certificates for HTTPS
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy test scripts
+COPY test/docker/test-binary-download.js ./test-binary-download.js
+COPY test/docker/test-full-integration.js ./test-full-integration.js
+
+# Default: run full integration test
+CMD ["node", "test-full-integration.js"]

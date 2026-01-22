@@ -116,11 +116,66 @@ Add the following to your `.mcp.json` for Cloud SQL:
 
 ### Authentication
 
-The Cloud SQL Proxy supports two authentication methods:
+The Cloud SQL Proxy requires Google Cloud authentication. Choose one of these methods:
 
-1. **Service Account JSON** (recommended for production): Set `GOOGLE_APPLICATION_CREDENTIALS` to the path of your service account key file.
+#### Option 1: Application Default Credentials (Recommended for Development)
 
-2. **Application Default Credentials** (convenient for development): If no credentials file is specified, the proxy uses your `gcloud auth application-default` credentials.
+This is the easiest way to get started for local development:
+
+1. **Install the Google Cloud CLI** if you haven't already:
+   - macOS: `brew install google-cloud-sdk`
+   - Other platforms: <https://cloud.google.com/sdk/docs/install>
+
+1. **Authenticate with your Google account**:
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
+   This opens a browser window for you to sign in with your Google account.
+
+1. **Verify authentication** (optional):
+
+   ```bash
+   gcloud auth application-default print-access-token
+   ```
+
+   If this prints a token, you're authenticated.
+
+That's it! The Cloud SQL Proxy will automatically use these credentials.
+
+#### Option 2: Service Account Key (Recommended for Production)
+
+For production deployments or CI/CD pipelines:
+
+1. **Create a service account** in the Google Cloud Console with the `Cloud SQL Client` role.
+
+2. **Download the JSON key file** for the service account.
+
+3. **Set the environment variable**:
+
+   ```json
+   {
+     "env": {
+       "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account-key.json",
+       "CLOUD_SQL_PROXY_ENABLED": "true"
+     }
+   }
+   ```
+
+### Troubleshooting Authentication
+
+If you see an error like:
+
+```text
+could not find default credentials
+```
+
+This means the proxy cannot find valid Google Cloud credentials. To fix:
+
+1. **For local development**: Run `gcloud auth application-default login`
+2. **For production**: Ensure `GOOGLE_APPLICATION_CREDENTIALS` points to a valid service account key file
+3. **Verify your account has access**: Your Google account or service account needs the `Cloud SQL Client` role on the Cloud SQL instance
 
 ### How It Works
 
