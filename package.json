@@ -1,6 +1,6 @@
 {
   "name": "@matpb/mysql-mcp-server",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "A Model Context Protocol (MCP) server for MySQL database operations with secure read-only queries, schema inspection, and Google Cloud SQL Proxy support",
   "type": "module",
   "bin": {
