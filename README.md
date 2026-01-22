@@ -1,20 +1,20 @@
 # MySQL MCP Server
 
-A read-only Model Context Protocol (MCP) server for MySQL databases. This server provides safe, read-only access to MySQL databases with automatic query sanitization to prevent any data mutations.
+A Model Context Protocol (MCP) server for MySQL databases. Provides safe, read-only access to MySQL databases with automatic query sanitization, Google Cloud SQL Proxy support, and remote HTTP deployment options.
 
 ## Features
 
 - **Read-Only Access**: All queries are sanitized to ensure only read operations are allowed
-- **Google Cloud SQL Proxy**: Built-in support for connecting to Cloud SQL instances without IP whitelisting
-- **Token Optimization**: Results are automatically limited and optimized to minimize token usage
-- **Comprehensive Tools**:
-  - `show_tables`: List all tables in the database
-  - `describe_table`: Get detailed schema information for a specific table
-  - `execute_query`: Execute any read-only SQL query
+- **Google Cloud SQL Proxy**: Built-in support for connecting to Cloud SQL instances
+- **Remote HTTP Mode**: Deploy as a remote service with API key authentication
+- **Docker Support**: Production-ready Docker images for easy deployment
+- **Token Optimization**: Results are automatically limited to minimize token usage
 
-## Usage with Claude Code
+## Quick Start
 
-Add to your project by creating a `.mcp.json` file in your project root:
+### Local Usage with Claude Code
+
+Add to your project's `.mcp.json`:
 
 ```json
 {
@@ -34,53 +34,204 @@ Add to your project by creating a `.mcp.json` file in your project root:
 }
 ```
 
-Claude Code will automatically detect and use this MCP server when you open your project.
+### Remote HTTP Server
 
-## Installation (for local development)
+Deploy as a remote service and connect from anywhere:
 
-**Note:** For normal usage with Claude Code, we recommend using `npx` as shown above. Local installation is only needed if you're developing or modifying the server.
-
-```bash
-npm install
+```json
+{
+  "mcpServers": {
+    "mysql": {
+      "type": "http",
+      "url": "https://your-server.example.com/mcp",
+      "headers": {
+        "X-API-Key": "your-api-key"
+      }
+    }
+  }
+}
 ```
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `show_tables` | List all tables in the database |
+| `describe_table` | Get detailed schema information for a table |
+| `execute_query` | Execute any read-only SQL query |
 
 ## Configuration
 
-1. Copy `.env.example` to `.env`:
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Configure your MySQL connection settings in `.env`:
+#### MySQL Connection
 
-```env
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=your_username
-MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=your_database
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MYSQL_HOST` | `localhost` | MySQL server host |
+| `MYSQL_PORT` | `3306` | MySQL server port |
+| `MYSQL_USER` | `root` | MySQL username |
+| `MYSQL_PASSWORD` | - | MySQL password |
+| `MYSQL_DATABASE` | - | Database name |
+| `MYSQL_CONNECTION_LIMIT` | `10` | Connection pool size |
+| `MYSQL_CONNECT_TIMEOUT` | `60000` | Connection timeout (ms) |
 
-# Optional settings
-MYSQL_CONNECTION_LIMIT=10
-MYSQL_CONNECT_TIMEOUT=60000
-QUERY_TIMEOUT=30000
-MAX_ROWS=1000
+#### Query Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `QUERY_TIMEOUT` | `30000` | Query timeout (ms) |
+| `MAX_ROWS` | `1000` | Maximum rows returned |
+
+#### HTTP Transport (Remote Mode)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_TRANSPORT` | `stdio` | Transport mode: `stdio` or `http-stream` |
+| `MCP_PORT` | `8080` | HTTP server port |
+| `API_KEYS` | - | Comma-separated API keys for authentication |
+| `CORS_ORIGIN` | `*` | CORS allowed origin |
+
+#### Google Cloud SQL Proxy
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLOUD_SQL_PROXY_ENABLED` | `false` | Enable Cloud SQL Proxy |
+| `CLOUD_SQL_INSTANCE` | - | Instance connection name (`project:region:instance`) |
+| `CLOUD_SQL_PROXY_PORT` | `3307` | Local proxy port |
+| `GOOGLE_APPLICATION_CREDENTIALS` | - | Path to service account JSON |
+| `CLOUD_SQL_PROXY_AUTO_DOWNLOAD` | `true` | Auto-download proxy binary |
+| `CLOUD_SQL_PROXY_STARTUP_TIMEOUT` | `30000` | Startup timeout (ms) |
+
+## Docker Deployment
+
+### Project Structure
+
+```
+mysql-mcp-server/
+├── docker/
+│   ├── Dockerfile              # Standard Docker image
+│   ├── Dockerfile.digitalocean # Image with baked-in credentials
+│   ├── docker-compose.yml      # Docker Compose configuration
+│   └── .env.example            # Docker environment template
+├── src/                        # Source code
+└── .env.example                # Environment template
 ```
 
-## Building
+### Build and Run Locally
 
 ```bash
-npm run build
+# Copy and configure environment
+cp docker/.env.example .env
+
+# Edit .env with your settings:
+# - Set API_KEYS for authentication
+# - Configure MySQL connection
+# - (Optional) Configure Cloud SQL Proxy
+
+# Build and start
+cd docker
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+### Deploy to Cloud Platforms
+
+#### Step 1: Prepare Credentials (if using Cloud SQL)
+
+```bash
+# Create a service account
+gcloud iam service-accounts create mysql-mcp-server \
+  --display-name="MySQL MCP Server"
+
+# Grant Cloud SQL Client role
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:mysql-mcp-server@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
+
+# Generate key file
+gcloud iam service-accounts keys create docker/service-account.json \
+  --iam-account=mysql-mcp-server@YOUR_PROJECT_ID.iam.gserviceaccount.com
+```
+
+#### Step 2: Build for AMD64
+
+Most cloud platforms run AMD64. Build with:
+
+```bash
+docker buildx build --platform linux/amd64 \
+  -f docker/Dockerfile.digitalocean \
+  -t your-registry.com/mysql-mcp-server:latest \
+  --push .
+```
+
+#### Step 3: Configure Environment Variables
+
+Set these in your cloud platform:
+
+| Variable | Value |
+|----------|-------|
+| `MCP_TRANSPORT` | `http-stream` |
+| `MCP_PORT` | `8080` |
+| `API_KEYS` | Your secure API key |
+| `MYSQL_USER` | Database username |
+| `MYSQL_PASSWORD` | Database password (mark as secret) |
+| `MYSQL_DATABASE` | Database name |
+| `CLOUD_SQL_PROXY_ENABLED` | `true` (if using Cloud SQL) |
+| `CLOUD_SQL_INSTANCE` | `project:region:instance` |
+
+#### Step 4: Connect from Claude Code
+
+```json
+{
+  "mcpServers": {
+    "mysql": {
+      "type": "http",
+      "url": "https://your-deployment-url.com/mcp",
+      "headers": {
+        "X-API-Key": "your-secure-api-key"
+      }
+    }
+  }
+}
+```
+
+### Test Your Deployment
+
+```bash
+curl -X POST https://your-server.com/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}},"id":1}'
 ```
 
 ## Google Cloud SQL Proxy
 
-This server includes built-in support for Google Cloud SQL Proxy, allowing secure connections to Cloud SQL instances without IP whitelisting.
+### Local Development
 
-### Cloud SQL Configuration
+For local development, use Application Default Credentials:
 
-Add the following to your `.mcp.json` for Cloud SQL:
+```bash
+# Install gcloud CLI
+brew install google-cloud-sdk  # macOS
+
+# Authenticate
+gcloud auth application-default login
+```
+
+Then configure your `.mcp.json`:
 
 ```json
 {
@@ -90,7 +241,7 @@ Add the following to your `.mcp.json` for Cloud SQL:
       "args": ["-y", "@matpb/mysql-mcp-server"],
       "env": {
         "CLOUD_SQL_PROXY_ENABLED": "true",
-        "CLOUD_SQL_INSTANCE": "project:region:instance",
+        "CLOUD_SQL_INSTANCE": "your-project:region:instance",
         "MYSQL_USER": "your_username",
         "MYSQL_PASSWORD": "your_password",
         "MYSQL_DATABASE": "your_database"
@@ -100,147 +251,80 @@ Add the following to your `.mcp.json` for Cloud SQL:
 }
 ```
 
-### Cloud SQL Environment Variables
+### Production with Service Account
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `CLOUD_SQL_PROXY_ENABLED` | No | `false` | Enable Cloud SQL Proxy |
-| `CLOUD_SQL_INSTANCE` | Yes* | - | Instance connection name (`project:region:instance`) |
-| `CLOUD_SQL_PROXY_PORT` | No | `3307` | Local TCP port for proxy |
-| `GOOGLE_APPLICATION_CREDENTIALS` | No | - | Path to service account JSON (falls back to gcloud auth) |
-| `CLOUD_SQL_PROXY_BINARY` | No | auto | Custom path to proxy binary |
-| `CLOUD_SQL_PROXY_AUTO_DOWNLOAD` | No | `true` | Auto-download binary if missing |
-| `CLOUD_SQL_PROXY_STARTUP_TIMEOUT` | No | `30000` | Startup timeout in milliseconds |
-
-*Required when `CLOUD_SQL_PROXY_ENABLED=true`
-
-### Authentication
-
-The Cloud SQL Proxy requires Google Cloud authentication. Choose one of these methods:
-
-#### Option 1: Application Default Credentials (Recommended for Development)
-
-This is the easiest way to get started for local development:
-
-1. **Install the Google Cloud CLI** if you haven't already:
-   - macOS: `brew install google-cloud-sdk`
-   - Other platforms: <https://cloud.google.com/sdk/docs/install>
-
-1. **Authenticate with your Google account**:
-
-   ```bash
-   gcloud auth application-default login
-   ```
-
-   This opens a browser window for you to sign in with your Google account.
-
-1. **Verify authentication** (optional):
-
-   ```bash
-   gcloud auth application-default print-access-token
-   ```
-
-   If this prints a token, you're authenticated.
-
-That's it! The Cloud SQL Proxy will automatically use these credentials.
-
-#### Option 2: Service Account Key (Recommended for Production)
-
-For production deployments or CI/CD pipelines:
-
-1. **Create a service account** in the Google Cloud Console with the `Cloud SQL Client` role.
-
-2. **Download the JSON key file** for the service account.
-
-3. **Set the environment variable**:
-
-   ```json
-   {
-     "env": {
-       "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account-key.json",
-       "CLOUD_SQL_PROXY_ENABLED": "true"
-     }
-   }
-   ```
-
-### Troubleshooting Authentication
-
-If you see an error like:
-
-```text
-could not find default credentials
+```json
+{
+  "env": {
+    "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account.json",
+    "CLOUD_SQL_PROXY_ENABLED": "true",
+    "CLOUD_SQL_INSTANCE": "your-project:region:instance"
+  }
+}
 ```
 
-This means the proxy cannot find valid Google Cloud credentials. To fix:
-
-1. **For local development**: Run `gcloud auth application-default login`
-2. **For production**: Ensure `GOOGLE_APPLICATION_CREDENTIALS` points to a valid service account key file
-3. **Verify your account has access**: Your Google account or service account needs the `Cloud SQL Client` role on the Cloud SQL instance
-
-### How It Works
-
-When Cloud SQL Proxy is enabled:
-
-1. The proxy binary is automatically downloaded (Mac, Windows, Linux supported)
-2. A local proxy process is started on the configured port
-3. MySQL connections are routed through the secure proxy tunnel
-4. The proxy is automatically stopped when the server shuts down
-
-## Security Features
+## Security
 
 ### Query Sanitization
 
-The server automatically rejects queries containing:
-
-- INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, TRUNCATE
-- Transaction commands (BEGIN, COMMIT, ROLLBACK)
-- File operations (INTO OUTFILE, INTO DUMPFILE)
-- Lock operations (LOCK TABLES, FOR UPDATE)
+The server automatically rejects:
+- Data modification: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `CREATE`, `ALTER`, `TRUNCATE`
+- Transactions: `BEGIN`, `COMMIT`, `ROLLBACK`
+- File operations: `INTO OUTFILE`, `INTO DUMPFILE`
+- Lock operations: `LOCK TABLES`, `FOR UPDATE`
 
 ### Allowed Operations
 
-- SELECT queries
-- SHOW commands (SHOW TABLES, SHOW DATABASES, etc.)
-- DESCRIBE/DESC commands
-- EXPLAIN queries
-- WITH clauses (CTEs)
-- SET @ (session variables only)
+- `SELECT` queries
+- `SHOW` commands
+- `DESCRIBE`/`DESC` commands
+- `EXPLAIN` queries
+- `WITH` clauses (CTEs)
 
-## Tool Examples
+### Best Practices
 
-### Show Tables
-
-Lists all tables in the current database.
-
-### Describe Table
-
-Get detailed schema information including columns, indexes, and metadata for a specific table.
-
-### Execute Query
-
-Execute any read-only SQL query with automatic sanitization and result limiting.
+1. **Use HTTPS** in production (via reverse proxy or cloud platform)
+2. **Generate strong API keys**: `openssl rand -hex 32`
+3. **Restrict CORS** to specific domains
+4. **Rotate API keys** regularly
+5. **Never commit** `.env` files or service account credentials
 
 ## Development
 
 ```bash
-# Watch mode for development
-npm run watch
+# Install dependencies
+npm install
 
-# Start the server
+# Build
+npm run build
+
+# Run in stdio mode (local)
 npm start
+
+# Run in HTTP mode
+MCP_TRANSPORT=http-stream API_KEYS=test-key npm start
+
+# Watch mode
+npm run watch
 ```
 
-## Token Optimization Strategies
+## Troubleshooting
 
-1. **Automatic Result Limiting**: All SELECT queries are automatically limited to prevent large result sets
-2. **Compact Schema Format**: Database schema is returned in a compact, token-efficient format
-3. **Buffer Handling**: Binary data is represented as byte count instead of full content
+### Cloud SQL Proxy Errors
 
-## Error Handling
+**"could not find default credentials"**
+- Run `gcloud auth application-default login`
+- Or set `GOOGLE_APPLICATION_CREDENTIALS` to your service account file
 
-- Connection failures are gracefully handled with clear error messages
-- Query timeouts prevent long-running queries
-- Invalid queries are rejected with specific error descriptions
+**"Access denied for user"**
+- Verify MySQL username/password
+- Check that your service account has `Cloud SQL Client` role
+
+### HTTP Transport Errors
+
+**"Session not found"**
+- The MCP client must send proper session headers
+- Test with the MCP Inspector: `npx @modelcontextprotocol/inspector`
 
 ## License
 

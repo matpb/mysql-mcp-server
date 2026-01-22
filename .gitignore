@@ -1,8 +1,29 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files (contain secrets)
 .env
-logs
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# IDE
 .DS_Store
-.idea
-.vscode
+.idea/
+.vscode/
+
+# Local MCP config (may contain secrets)
 .mcp.json
+
+# Service account credentials (NEVER commit these)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+docker/service-account.json
