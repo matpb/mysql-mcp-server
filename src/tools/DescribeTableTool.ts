@@ -18,6 +18,27 @@ class DescribeTableTool extends MCPTool<DescribeTableInput> {
     },
   };
 
+  // Override toolCall to fix mcp-framework's invalid error response type
+  async toolCall(request: { params: { arguments?: Record<string, unknown> } }) {
+    try {
+      const args = request.params.arguments || {};
+      const zodSchema = z.object({ table: z.string() });
+      const validatedInput = zodSchema.parse(args) as DescribeTableInput;
+      const result = await this.execute(validatedInput);
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+      };
+    } catch (error) {
+      // Return error as valid text content instead of invalid 'error' type
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+        }) }],
+        isError: true,
+      };
+    }
+  }
+
   async execute(input: DescribeTableInput) {
     try {
       // Validate table name to prevent SQL injection

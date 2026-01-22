@@ -20,6 +20,29 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
     },
   };
 
+  // Override toolCall to fix mcp-framework's invalid error response type
+  async toolCall(request: { params: { arguments?: Record<string, unknown> } }) {
+    try {
+      const args = request.params.arguments || {};
+      const zodSchema = z.object({ query: z.string() });
+      const validatedInput = zodSchema.parse(args) as ExecuteQueryInput;
+      const result = await this.execute(validatedInput);
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+      };
+    } catch (error) {
+      // Return error as valid text content instead of invalid 'error' type
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          message: "Tool execution failed.",
+        }) }],
+        isError: true,
+      };
+    }
+  }
+
   async execute(input: ExecuteQueryInput) {
     try {
       // Sanitize the query
