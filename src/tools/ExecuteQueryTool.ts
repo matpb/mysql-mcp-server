@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mysqlManager } from "../utils/MySQLManager.js";
 import { QuerySanitizer } from "../utils/QuerySanitizer.js";
 import { config } from "../config.js";
+import { serializeForJson } from "../utils/serialize.js";
 
 interface ExecuteQueryInput {
   query: string;
@@ -56,13 +57,14 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
 
       // Handle different result types
       if (Array.isArray(results)) {
-        // SELECT query results
+        // SELECT query results - serialize to handle BigInt, Buffer, Date, etc.
+        const serializedData = serializeForJson(results);
         const rowCount = results.length;
         const truncated = rowCount === limit;
 
         return {
           success: true,
-          data: results,
+          data: serializedData,
           rowCount,
           truncated,
           executionTime: `${executionTime}ms`,
@@ -71,10 +73,10 @@ class ExecuteQueryTool extends MCPTool<ExecuteQueryInput> {
             : `Query executed successfully. ${rowCount} row(s) returned.`,
         };
       } else {
-        // Non-SELECT query results (SHOW, DESCRIBE, etc.)
+        // Non-SELECT query results (SHOW, DESCRIBE, etc.) - serialize to handle special types
         return {
           success: true,
-          data: results,
+          data: serializeForJson(results),
           executionTime: `${executionTime}ms`,
           message: "Query executed successfully.",
         };

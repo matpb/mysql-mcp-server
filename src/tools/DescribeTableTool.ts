@@ -1,6 +1,7 @@
 import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import { mysqlManager } from "../utils/MySQLManager.js";
+import { serializeForJson } from "../utils/serialize.js";
 
 interface DescribeTableInput {
   table: string;
@@ -79,9 +80,9 @@ class DescribeTableTool extends MCPTool<DescribeTableInput> {
 
       return {
         table: tableName,
-        columns: formattedColumns,
-        indexes: formattedIndexes,
-        metadata,
+        columns: serializeForJson(formattedColumns),
+        indexes: serializeForJson(formattedIndexes),
+        metadata: serializeForJson(metadata),
         summary: `Table '${tableName}' has ${formattedColumns.length} columns and ${formattedIndexes.length} indexes`,
       };
     } catch (error) {
