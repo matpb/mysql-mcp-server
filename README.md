@@ -1,5 +1,7 @@
 # MySQL MCP Server
 
+> **Deprecated.** This package is no longer maintained. Use [mysql-mcp-rs](https://github.com/matpb/mysql-mcp-rs) instead: a single static Rust binary with the same read-only MCP tools, multi-database support, API key authentication, stricter query sanitizing, and active maintenance. Existing deployments keep working, but no further releases will be published here.
+
 A Model Context Protocol (MCP) server for MySQL databases. Provides safe, read-only access to MySQL databases with automatic query sanitization, Google Cloud SQL Proxy support, and remote HTTP deployment options.
 
 ## Features
